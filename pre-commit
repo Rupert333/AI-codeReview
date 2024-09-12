@@ -1,74 +1,34 @@
 #!/bin/sh
 
-# 定义API密钥和URL
-apiKeySecret="feb48960fdfdb24f76b2dd60b0774999.wymJnthzeiwFvabc"
-url="https://open.bigmodel.cn/api/paas/v4/chat/completions"
+# 引入配置文件
+. .git/hooks/config.sh
 
-
-# 使用当前时间戳生成原始响应文件名和处理后响应文件名
-timestamp=$(date +%Y%m%d%H%M%S)
-originalFilename="codeReviewLog/originalFilename_$timestamp.json"
-processedFilename="codeReviewLog/codeReviewResult_$timestamp.md"
 # 确保目录存在
-directory="codeReviewLog"
 if [ ! -d "$directory" ]; then
   echo "Directory $directory does not exist. Creating..."
   mkdir -p "$directory"
 fi
 
+# 使用当前时间戳生成处理后响应文件名
+timestamp=$(date +%Y%m%d%H%M%S)
+processedFilename="$directory/codeReviewResult_$timestamp.md"
+originalFilename="codeReviewLog/originalFilename_$timestamp.json"
+
 # 获取本次代码变更的内容并转义控制字符
 changes=$(git diff --cached)
-echo "提交内容："
-echo "$changes"
+#echo "提交内容："
+#echo "$changes"
+
 # 转义换行符和引号
-changes=$(echo "$changes" | tr '\n' ' ' | sed 's/\\n$//' | sed 's/\\$//')
-# 去除引号
-changes=$(echo "$changes" | sed 's/"/\\"/g; s/\n/\\n/g')
-echo "转义后内容：$changes"
+escapedChanges=$(echo "$changes" | tr '\n' ' ' | sed 's/\\n$//' | sed 's/\\$//')
+escapedChanges=$(echo "$escapedChanges" | sed 's/"/\\"/g; s/\n/\\n/g')
+#echo "转义后内容：$escapedChanges"
 
-# 构建请求体
-jsonInputString=$(cat <<EOF
-{
-    "model": "glm-4-flash",
-    "messages": [
-        {
-            "role": "user",
-            "content": "你是一位资深的编程架构师，精通架构设计、最佳实践、以及各种编程语言。请根据以下git diff记录，对代码进行全面评审，重点关注以下几点：1. 代码是否符合最佳实践和设计模式？2. 是否存在潜在的bug或安全隐患？3. 代码的可读性和可维护性如何？4. 是否有需要优化的地方，如性能或逻辑简化？代码变更如下：: $changes"
-        }
-    ]
-}
-EOF
-)
-
-# 发送HTTP POST请求并保存原始响应到文件
-response=$(curl -s -o "$originalFilename" -w "%{http_code}" -X POST \
-  -H "Authorization: Bearer $apiKeySecret" \
-  -H "Content-Type: application/json" \
-  -H "User-Agent: Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)" \
-  -d "$jsonInputString" \
-  "${url}")
-
-# 打印HTTP响应码
-echo "Response Code: $response"
-
-# Check if the response code is 200
-if [ "$response" -eq 200 ]; then
-  # Process the response and save to the processed file
-  echo "Processing response and saving to processed file..."
-
-  jq -r '.choices[0].message.content' "$originalFilename" | while IFS= read -r line; do
-    echo "${line%\"}" | sed 's/^"//; s/"$//' >> "$processedFilename"
-  done
-  echo "Processed data saved to $processedFilename"
-
-  # Check if the processed file content is 'null'
-  if [ -s "$processedFilename" ] && [ "$(cat "$processedFilename")" = 'null' ]; then
-    echo "本次没有评审结果"
-  else
-    echo "本次有评审结果"
-    # Clean up temporary file
-    rm "$originalFilename"
-  fi
+# 根据选择的模型调用不同的评审脚本
+if [ "$selected_model" = "openai" ]; then
+  . .git/hooks/glm_openai.sh "$escapedChanges" "$processedFilename" "$originalFilename"
+elif [ "$selected_model" = "zhipu" ]; then
+  . .git/hooks/glm_zhipu.sh "$escapedChanges" "$processedFilename" "$originalFilename"
 else
-  echo "Failed to get a successful response."
+  echo "未知模型，请检查配置文件中模型选择是否正确。"
 fi
