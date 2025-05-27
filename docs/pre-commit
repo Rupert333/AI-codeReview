@@ -1,7 +1,10 @@
 #!/bin/sh
 
+# 启用调试输出
+# set -x
+
 # 引入配置文件
-. .git/hooks/config.sh
+. "$(git rev-parse --show-toplevel)/.git/hooks/config.sh"
 
 # 确保目录存在
 if [ ! -d "$directory" ]; then
@@ -17,18 +20,17 @@ originalFilename="$directory/originalFilename_$timestamp.json"
 # 获取本次代码变更的内容
 changes=$(git diff --cached)
 
-# 将变更内容保存到临时文件，避免命令行参数传递可能引起的问题
-temp_changes_file=$(mktemp)
-echo "$changes" > "$temp_changes_file"
+# 检查是否有变更内容
+if [ -z "$changes" ]; then
+  echo "没有检测到代码变更，跳过评审"
+  exit 0
+fi
 
-# 根据选择的模型调用不同的评审脚本
+# 直接传递变更内容，不使用临时文件
 if [ "$selected_model" = "openai" ]; then
-  . .git/hooks/glm_openai.sh "$temp_changes_file" "$processedFilename" "$originalFilename"
+  . "$(git rev-parse --show-toplevel)/.git/hooks/glm_openai.sh" "$changes" "$processedFilename" "$originalFilename"
 elif [ "$selected_model" = "zhipu" ]; then
-  . .git/hooks/glm_zhipu.sh "$temp_changes_file" "$processedFilename" "$originalFilename"
+  . "$(git rev-parse --show-toplevel)/.git/hooks/glm_zhipu.sh" "$changes" "$processedFilename" "$originalFilename"
 else
   echo "未知模型，请检查配置文件中模型选择是否正确。"
 fi
-
-# 清理临时文件
-rm -f "$temp_changes_file"

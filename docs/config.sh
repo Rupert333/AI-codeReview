@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # 定义API密钥和URL
-zhipu_api_key_secret="feb48960fdfdb24f76b2dd60b0774214.wymJnthzeiwF9abc"
+zhipu_api_key_secret="feb48960fdfdb24f76b2dd60b0774214.wymJnthzeiwFv3j3"
 openai_api_key="your-openai-api-key-here"
 
 # 配置文件路径
