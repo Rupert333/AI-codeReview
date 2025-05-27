@@ -23,6 +23,13 @@ public interface IEnum<V> {
      * @return 名称
      */
     String getDesc();
+
+
+    /**
+     * 获取名称
+     * @return 名称
+     */
+    String getType();
 }
 
 
