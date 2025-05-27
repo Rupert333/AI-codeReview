@@ -12,23 +12,23 @@ fi
 # 使用当前时间戳生成处理后响应文件名
 timestamp=$(date +%Y%m%d%H%M%S)
 processedFilename="$directory/codeReviewResult_$timestamp.md"
-originalFilename="codeReviewLog/originalFilename_$timestamp.json"
+originalFilename="$directory/originalFilename_$timestamp.json"
 
-# 获取本次代码变更的内容并转义控制字符
+# 获取本次代码变更的内容
 changes=$(git diff --cached)
-#echo "提交内容："
-#echo "$changes"
 
-# 转义换行符和引号
-escapedChanges=$(echo "$changes" | tr '\n' ' ' | sed 's/\\n$//' | sed 's/\\$//')
-escapedChanges=$(echo "$escapedChanges" | sed 's/"/\\"/g; s/\n/\\n/g')
-#echo "转义后内容：$escapedChanges"
+# 将变更内容保存到临时文件，避免命令行参数传递可能引起的问题
+temp_changes_file=$(mktemp)
+echo "$changes" > "$temp_changes_file"
 
 # 根据选择的模型调用不同的评审脚本
 if [ "$selected_model" = "openai" ]; then
-  . .git/hooks/glm_openai.sh "$escapedChanges" "$processedFilename" "$originalFilename"
+  . .git/hooks/glm_openai.sh "$temp_changes_file" "$processedFilename" "$originalFilename"
 elif [ "$selected_model" = "zhipu" ]; then
-  . .git/hooks/glm_zhipu.sh "$escapedChanges" "$processedFilename" "$originalFilename"
+  . .git/hooks/glm_zhipu.sh "$temp_changes_file" "$processedFilename" "$originalFilename"
 else
   echo "未知模型，请检查配置文件中模型选择是否正确。"
 fi
+
+# 清理临时文件
+rm -f "$temp_changes_file"
