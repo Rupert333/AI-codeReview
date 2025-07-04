@@ -24,9 +24,3 @@ ENDPROMPT
 
 # 选择要使用的模型 ('zhipu' 或 'openai')
 selected_model="zhipu"
-
-# 添加调试模式开关
-debug_mode=false
-
-# 添加API超时设置（秒）
-api_timeout=30
